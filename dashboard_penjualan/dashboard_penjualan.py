@@ -2,39 +2,66 @@ import pandas as pd
 import streamlit as st
 import plotly.express as px
 import tempfile
-import requests
-import os
-from datetime import datetime
 from xhtml2pdf import pisa
+import os
+import io
+from datetime import datetime
+import requests
+
+GITHUB_CSV_URL = "https://raw.githubusercontent.com/zuied/streamlit_pythonBI_dashboard/main/dashboard_penjualan/penjualan.csv"
+TARGET_PATH = "data_versions/data_latest.csv"
+
+def fetch_github_csv():
+    r = requests.get(GITHUB_CSV_URL)
+    if r.status_code == 200:
+        with open(TARGET_PATH, "wb") as f:
+            f.write(r.content)
+        st.session_state['last_file'] = "data_latest.csv"
+    else:
+        st.warning("⚠️ Gagal mengunduh data dari GitHub.")
+
+fetch_github_csv()
+
 
 st.set_page_config(page_title="Dashboard Penjualan", layout="wide")
 
-# --- FETCH CSV DARI GITHUB ---
-GITHUB_CSV_URL = "https://raw.githubusercontent.com/zuied/python-BI/main/dashboard_penjualan/penjualan.csv"
-TARGET_DIR = "data_versions"
-TARGET_PATH = os.path.join(TARGET_DIR, "penjualan_github.csv")
+# === SETUP FOLDER ===
+VERSI_FOLDER = "data_versions"
+os.makedirs(VERSI_FOLDER, exist_ok=True)
 
-os.makedirs(TARGET_DIR, exist_ok=True)
+# === STATE LAST FILE ===
+if 'last_file' not in st.session_state:
+    st.session_state['last_file'] = None
 
-def fetch_github_csv():
-    try:
-        r = requests.get(GITHUB_CSV_URL)
-        if r.status_code == 200:
-            with open(TARGET_PATH, "wb") as f:
-                f.write(r.content)
-            return TARGET_PATH
-        else:
-            st.warning("⚠️ Gagal mengunduh data dari GitHub.")
-            return None
-    except Exception as e:
-        st.error(f"❌ Error fetch GitHub CSV: {e}")
-        return None
+# === UPLOAD FILE ===
+st.sidebar.markdown("### 📤 Upload File CSV")
+uploaded_file = st.sidebar.file_uploader("Unggah file penjualan.csv", type=["csv"])
 
-# Fetch dan load CSV
-fetched_csv = fetch_github_csv()
-df = pd.read_csv(fetched_csv) if fetched_csv else pd.DataFrame()
+if uploaded_file is not None:
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    filename = f"data_{timestamp}.csv"
+    file_path = os.path.join(VERSI_FOLDER, filename)
+    with open(file_path, "wb") as f:
+        f.write(uploaded_file.getvalue())
+    st.session_state['last_file'] = filename
+    st.success(f"✅ File berhasil diunggah sebagai: {filename}")
 
-# --- DATA CLEANING ---
+# === PILIH FILE DATA ===
+st.sidebar.markdown("### 📂 Pilih File Data")
+file_list = sorted(os.listdir(VERSI_FOLDER), reverse=True)
+
+if st.session_state['last_file'] and st.session_state['last_file'] not in file_list:
+    file_list.insert(0, st.session_state['last_file'])
+
+if not file_list:
+    st.warning("❗️Belum ada file CSV yang tersedia.")
+    st.stop()
+
+selected_file = st.sidebar.selectbox("Pilih file:", file_list, index=0)
+file_path = os.path.join(VERSI_FOLDER, selected_file)
+
+# === LOAD DATA ===
+df = pd.read_csv(file_path)
 df['tanggal'] = pd.to_datetime(df['tanggal'], errors='coerce')
 df['qty'] = pd.to_numeric(df['qty'], errors='coerce')
 df['harga'] = pd.to_numeric(df['harga'], errors='coerce')
@@ -45,39 +72,40 @@ else:
     df['total'] = df['total'].astype(str).str.replace('.', '', regex=False)
     df['total'] = pd.to_numeric(df['total'], errors='coerce')
 
+# === FILTER TANGGAL ===
 min_date = df['tanggal'].min()
 max_date = df['tanggal'].max()
 
-# --- FILTER TANGGAL ---
 tanggal_awal, tanggal_akhir = st.sidebar.date_input(
     "Pilih Rentang Tanggal",
     [min_date, max_date],
     min_value=min_date,
     max_value=max_date
 )
+
+# === FILTER DATA ===
 df = df[(df['tanggal'] >= pd.to_datetime(tanggal_awal)) & (df['tanggal'] <= pd.to_datetime(tanggal_akhir))]
 df = df.dropna(subset=['tanggal'])
 df['bulan'] = df['tanggal'].dt.to_period('M').astype(str)
 
-# --- SIDEBAR FILTER ---
 st.sidebar.header("📂 Filter Data")
 wilayah_options = df['wilayah'].dropna().unique().tolist()
 wilayah = st.sidebar.multiselect("Pilih Wilayah", wilayah_options, default=wilayah_options)
 kategori_options = df['kategori'].dropna().unique().tolist()
 kategori = st.sidebar.multiselect("Pilih Kategori", kategori_options, default=kategori_options)
 
-# --- FILTER DATA ---
 df_filter = df[
     df['wilayah'].isin(wilayah) &
     df['kategori'].isin(kategori)
 ]
+
 df_filter['total'] = pd.to_numeric(df_filter['total'], errors='coerce').fillna(0)
 
 if df_filter.empty:
-    st.warning("❗Tidak ada data ditemukan dengan filter yang dipilih.")
+    st.warning("❗️Tidak ada data ditemukan dengan filter yang dipilih.")
     st.stop()
 
-# --- KPI ---
+# === KPI ===
 total_penjualan = df_filter['total'].sum()
 total_transaksi = len(df_filter)
 produk_terlaris = (
@@ -93,8 +121,7 @@ col3.metric("🔥 Produk Terlaris", produk_terlaris)
 
 st.markdown("---")
 
-# --- SISA STOK ---
-st.markdown("---")
+# === SISA STOK ===
 st.subheader("📦 Informasi Sisa Stok per Produk")
 terjual = df.groupby('produk')['qty'].sum()
 stok_awal = df.groupby('produk')['stok_awal'].first()
@@ -106,12 +133,13 @@ stok_df = pd.DataFrame({
 }).fillna(0).astype(int)
 
 st.dataframe(stok_df)
+
 stok_habis = stok_df[stok_df['Sisa Stok'] <= 5]
 if not stok_habis.empty:
     st.warning("⚠️ Ada produk dengan stok menipis (≤ 5 unit)")
     st.dataframe(stok_habis)
 
-# --- GRAFIK ---
+# === GRAFIK ===
 penjualan_bulanan = df_filter.groupby('bulan')['total'].sum().reset_index()
 fig1 = px.line(penjualan_bulanan, x='bulan', y='total', markers=True, title='📈 Penjualan per Bulan')
 st.plotly_chart(fig1, use_container_width=True)
@@ -124,7 +152,7 @@ wilayah_chart = df_filter.groupby('wilayah')['total'].sum().reset_index()
 fig3 = px.bar(wilayah_chart, x='wilayah', y='total', title='🌍 Penjualan per Wilayah')
 st.plotly_chart(fig3, use_container_width=True)
 
-# --- TOP 10 PRODUK ---
+# === TOP 10 PRODUK ===
 df_filter['total'] = pd.to_numeric(df_filter['total'], errors='coerce')
 df_filter = df_filter.dropna(subset=['total'])
 
@@ -139,17 +167,16 @@ else:
     )
     fig4 = px.bar(top_produk, x='produk', y='total', title='🏆 Top 10 Produk Terlaris')
 
-fig4.update_traces(texttemplate='%{y:,}', textposition='outside')
-fig4.update_layout(
-    yaxis_tickformat=',',
-    yaxis_title='Total Penjualan (Rp)',
-    xaxis_title='Produk',
-    title_x=0.5
-)
-st.plotly_chart(fig4, use_container_width=True)
+    fig4.update_traces(texttemplate='%{y:,}', textposition='outside')
+    fig4.update_layout(
+        yaxis_tickformat=',',
+        yaxis_title='Total Penjualan (Rp)',
+        xaxis_title='Produk',
+        title_x=0.5
+    )
+    st.plotly_chart(fig4, use_container_width=True)
 
-# --- DOWNLOAD ---
-import io
+# === DOWNLOAD EXCEL ===
 st.subheader("⬇️ Download Data")
 excel_buffer = io.BytesIO()
 df_filter.to_excel(excel_buffer, index=False, sheet_name="Penjualan")
@@ -160,7 +187,7 @@ st.download_button(
     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 )
 
-# --- EXPORT PDF ---
+# === EXPORT PDF ===
 def df_to_pdf(df_in):
     html = df_in.to_html(index=False)
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".pdf")
