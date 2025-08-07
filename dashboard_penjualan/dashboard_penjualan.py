@@ -215,3 +215,6 @@ if st.button("Export ke PDF"):
     pdf_file = df_to_pdf(df)
     with open(pdf_file, "rb") as f:
         st.download_button("Download PDF", data=f, file_name="laporan_penjualan.pdf", mime="application/pdf")
+
+fanta = df[df['produk'].str.contains("Fanta Stroberi 500ml", case=False)]
+st.write("🔍 Debug Fanta Stroberi 500ml:", fanta)
