@@ -8,7 +8,7 @@ import io
 from datetime import datetime
 import requests
 
-GITHUB_CSV_URL = "https://github.com/zuied/streamlit_pythonBI_dashboard/blob/main/dashboard_penjualan/penjualan.csv"
+GITHUB_CSV_URL = "https://raw.githubusercontent.com/zuied/streamlit_pythonBI_dashboard/main/dashboard_penjualan/penjualan.csv"
 TARGET_PATH = "data_versions/data_latest.csv"
 
 def fetch_github_csv():
