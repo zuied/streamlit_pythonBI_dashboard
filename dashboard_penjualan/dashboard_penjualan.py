@@ -125,21 +125,36 @@ st.markdown("---")
 
 # === SISA STOK ===
 st.subheader("📦 Informasi Sisa Stok per Produk")
-terjual = df.groupby('produk')['qty'].sum()
+
+# Pastikan kolom ada
+required_cols = ['produk', 'qty', 'stok_awal']
+if not all(col in df.columns for col in required_cols):
+    st.error("❌ Data tidak memiliki kolom yang diperlukan: 'produk', 'qty', 'stok_awal'")
+    st.stop()
+
+# Hitung terjual & stok awal
+terjual = df.groupby('produk')['qty'].sum(min_count=1)  # gunakan min_count agar NaN tetap NaN
 stok_awal = df.groupby('produk')['stok_awal'].first()
+
+# Hitung sisa stok (bisa negatif jika stok awal tidak cukup)
 sisa_stok = stok_awal - terjual
+
+# Gabungkan ke DataFrame
 stok_df = pd.DataFrame({
     'Stok Awal': stok_awal,
     'Terjual': terjual,
     'Sisa Stok': sisa_stok
-}).fillna(0).astype(int)
+}).fillna(0).astype(int)  # isi NaN dengan 0 dan konversi ke int
 
-st.dataframe(stok_df)
+# Tampilkan
+st.dataframe(stok_df, use_container_width=True)
 
-stok_habis = stok_df[stok_df['Sisa Stok'] <= 5]
-if not stok_habis.empty:
-    st.warning("⚠️ Ada produk dengan stok menipis (≤ 5 unit)")
-    st.dataframe(stok_habis)
+# Opsional: Tampilkan produk dengan stok menipis
+stok_menipis = stok_df[stok_df['Sisa Stok'] <= 5]
+if not stok_menipis.empty:
+    st.warning("⚠️ Produk berikut memiliki stok tersisa ≤ 5 unit:")
+    st.dataframe(stok_menipis)
+
 
 # === GRAFIK ===
 penjualan_bulanan = df_filter.groupby('bulan')['total'].sum().reset_index()
