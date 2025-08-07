@@ -35,6 +35,7 @@ if 'last_file' not in st.session_state:
 
 uploaded_file = st.sidebar.file_uploader("Unggah file penjualan.csv", type=["csv"])
 if uploaded_file is not None:
+    st.cache_data.clear()
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     filename = f"data_{timestamp}.csv"
     file_path = os.path.join(VERSI_FOLDER, filename)
