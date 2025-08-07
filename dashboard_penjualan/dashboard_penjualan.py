@@ -8,19 +8,16 @@ import io
 from datetime import datetime
 import requests
 
-GITHUB_CSV_URL = "https://raw.githubusercontent.com/zuied/streamlit_pythonBI_dashboard/main/dashboard_penjualan/penjualan.csv"
-TARGET_PATH = "data_versions/data_latest.csv"
+GITHUB_CSV_URL = "https://raw.githubusercontent.com/zuied/python-BI/main/dashboard_penjualan/penjualan.csv"
 
-def fetch_github_csv():
-    r = requests.get(GITHUB_CSV_URL)
-    if r.status_code == 200:
-        with open(TARGET_PATH, "wb") as f:
-            f.write(r.content)
-        st.session_state['last_file'] = "data_latest.csv"
-    else:
-        st.warning("⚠️ Gagal mengunduh data dari GitHub.")
-
-fetch_github_csv()
+@st.cache_data(ttl=300)  # cache selama 5 menit (300 detik)
+def load_data_from_github():
+    try:
+        df = pd.read_csv(GITHUB_CSV_URL)
+        return df
+    except Exception as e:
+        st.error(f"❌ Gagal memuat data dari GitHub: {e}")
+        return pd.DataFrame()  # fallback
 
 
 st.set_page_config(page_title="Dashboard Penjualan", layout="wide")
