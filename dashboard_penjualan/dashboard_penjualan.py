@@ -6,6 +6,22 @@ from xhtml2pdf import pisa
 import os
 import io
 from datetime import datetime
+import requests
+
+GITHUB_CSV_URL = "https://raw.githubusercontent.com/USERNAME/REPO/main/dashboard_penjualan/penjualan.csv"
+TARGET_PATH = "data_versions/data_latest.csv"
+
+def fetch_github_csv():
+    r = requests.get(GITHUB_CSV_URL)
+    if r.status_code == 200:
+        with open(TARGET_PATH, "wb") as f:
+            f.write(r.content)
+        st.session_state['last_file'] = "data_latest.csv"
+    else:
+        st.warning("⚠️ Gagal mengunduh data dari GitHub.")
+
+fetch_github_csv()
+
 
 st.set_page_config(page_title="Dashboard Penjualan", layout="wide")
 
