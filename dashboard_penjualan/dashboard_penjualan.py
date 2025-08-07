@@ -18,9 +18,14 @@ def load_data_from_github():
     except Exception as e:
         st.error(f"❌ Gagal memuat data dari GitHub: {e}")
         return pd.DataFrame()  # fallback
+df = load_data_from_github()
 
 
 st.set_page_config(page_title="Dashboard Penjualan", layout="wide")
+if st.sidebar.button("🔄 Refresh Data dari GitHub"):
+    st.cache_data.clear()
+    st.rerun()
+
 
 # === SETUP FOLDER ===
 VERSI_FOLDER = "data_versions"
