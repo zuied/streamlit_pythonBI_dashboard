@@ -10,7 +10,7 @@ import requests
 
 GITHUB_CSV_URL = "https://raw.githubusercontent.com/zuied/streamlit_pythonBI_dashboard/main/dashboard_penjualan/penjualan.csv"
 
-@st.cache_data(ttl=300)  # cache selama 5 menit (300 detik)
+@st.cache_data(ttl=60)  # cache selama 5 menit (300 detik)
 def load_data_from_github():
     try:
         df = pd.read_csv(GITHUB_CSV_URL)
