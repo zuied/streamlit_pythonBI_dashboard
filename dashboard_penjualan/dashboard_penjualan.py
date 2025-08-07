@@ -8,7 +8,7 @@ import io
 from datetime import datetime
 import requests
 
-GITHUB_CSV_URL = "https://raw.githubusercontent.com/zuied/python-BI/main/dashboard_penjualan/penjualan.csv"
+GITHUB_CSV_URL = "https://raw.githubusercontent.com/zuied/streamlit_pythonBI_dashboard/main/dashboard_penjualan/penjualan.csv"
 
 @st.cache_data(ttl=300)  # cache selama 5 menit (300 detik)
 def load_data_from_github():
