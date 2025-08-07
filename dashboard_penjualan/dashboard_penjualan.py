@@ -6,39 +6,34 @@ from xhtml2pdf import pisa
 import os
 import io
 from datetime import datetime
-import requests
 
+# --- CONFIG ---
+st.set_page_config(page_title="Dashboard Penjualan", layout="wide")
 GITHUB_CSV_URL = "https://raw.githubusercontent.com/zuied/streamlit_pythonBI_dashboard/main/dashboard_penjualan/penjualan.csv"
+VERSI_FOLDER = "data_versions"
+os.makedirs(VERSI_FOLDER, exist_ok=True)
 
-@st.cache_data(ttl=60)  # cache selama 5 menit (300 detik)
+# --- GITHUB LOADER ---
+@st.cache_data(ttl=300)
 def load_data_from_github():
     try:
         df = pd.read_csv(GITHUB_CSV_URL)
         return df
     except Exception as e:
         st.error(f"❌ Gagal memuat data dari GitHub: {e}")
-        return pd.DataFrame()  # fallback
-df = load_data_from_github()
+        return pd.DataFrame()
 
-
-st.set_page_config(page_title="Dashboard Penjualan", layout="wide")
+# --- REFRESH BUTTON ---
 if st.sidebar.button("🔄 Refresh Data dari GitHub"):
     st.cache_data.clear()
     st.rerun()
 
-
-# === SETUP FOLDER ===
-VERSI_FOLDER = "data_versions"
-os.makedirs(VERSI_FOLDER, exist_ok=True)
-
-# === STATE LAST FILE ===
+# --- UPLOAD FILE ---
+st.sidebar.markdown("### 📤 Upload File CSV")
 if 'last_file' not in st.session_state:
     st.session_state['last_file'] = None
 
-# === UPLOAD FILE ===
-st.sidebar.markdown("### 📤 Upload File CSV")
 uploaded_file = st.sidebar.file_uploader("Unggah file penjualan.csv", type=["csv"])
-
 if uploaded_file is not None:
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     filename = f"data_{timestamp}.csv"
@@ -48,22 +43,32 @@ if uploaded_file is not None:
     st.session_state['last_file'] = filename
     st.success(f"✅ File berhasil diunggah sebagai: {filename}")
 
-# === PILIH FILE DATA ===
-st.sidebar.markdown("### 📂 Pilih File Data")
+# --- PILIH SUMBER DATA ---
+st.sidebar.markdown("### 📂 Pilih Sumber Data")
 file_list = sorted(os.listdir(VERSI_FOLDER), reverse=True)
-
 if st.session_state['last_file'] and st.session_state['last_file'] not in file_list:
     file_list.insert(0, st.session_state['last_file'])
 
-if not file_list:
-    st.warning("❗️Belum ada file CSV yang tersedia.")
-    st.stop()
+use_github = st.sidebar.checkbox("Gunakan data dari GitHub (default)", value=True)
 
-selected_file = st.sidebar.selectbox("Pilih file:", file_list, index=0)
-file_path = os.path.join(VERSI_FOLDER, selected_file)
+# --- LOAD DATA ---
+if use_github:
+    df = load_data_from_github()
+    data_source = "GitHub"
+else:
+    if not file_list:
+        st.warning("❗ Belum ada file CSV lokal yang tersedia.")
+        st.stop()
+    selected_file = st.sidebar.selectbox("Pilih file lokal:", file_list, index=0)
+    file_path = os.path.join(VERSI_FOLDER, selected_file)
+    df = pd.read_csv(file_path)
+    data_source = selected_file
 
-# === LOAD DATA ===
-df = pd.read_csv(file_path)
+# --- DEBUG CEK DATA FANTA ---
+fanta_debug = df[df['produk'].str.contains("Fanta Stroberi 500ml", case=False, na=False)]
+st.sidebar.write("🧪 Stok Fanta Stroberi 500ml:", fanta_debug[['produk', 'stok_awal']])
+
+# --- CLEANING ---
 df['tanggal'] = pd.to_datetime(df['tanggal'], errors='coerce')
 df['qty'] = pd.to_numeric(df['qty'], errors='coerce')
 df['harga'] = pd.to_numeric(df['harga'], errors='coerce')
@@ -74,37 +79,32 @@ else:
     df['total'] = df['total'].astype(str).str.replace('.', '', regex=False)
     df['total'] = pd.to_numeric(df['total'], errors='coerce')
 
-# === FILTER TANGGAL ===
+# --- FILTER TANGGAL ---
 min_date = df['tanggal'].min()
 max_date = df['tanggal'].max()
-
 tanggal_awal, tanggal_akhir = st.sidebar.date_input(
     "Pilih Rentang Tanggal",
     [min_date, max_date],
     min_value=min_date,
     max_value=max_date
 )
-
-# === FILTER DATA ===
 df = df[(df['tanggal'] >= pd.to_datetime(tanggal_awal)) & (df['tanggal'] <= pd.to_datetime(tanggal_akhir))]
 df = df.dropna(subset=['tanggal'])
 df['bulan'] = df['tanggal'].dt.to_period('M').astype(str)
 
+# --- FILTER SIDEBAR ---
 st.sidebar.header("📂 Filter Data")
 wilayah_options = df['wilayah'].dropna().unique().tolist()
 wilayah = st.sidebar.multiselect("Pilih Wilayah", wilayah_options, default=wilayah_options)
 kategori_options = df['kategori'].dropna().unique().tolist()
 kategori = st.sidebar.multiselect("Pilih Kategori", kategori_options, default=kategori_options)
 
-df_filter = df[
-    df['wilayah'].isin(wilayah) &
-    df['kategori'].isin(kategori)
-]
-
+# --- FILTER DATA ---
+df_filter = df[df['wilayah'].isin(wilayah) & df['kategori'].isin(kategori)]
 df_filter['total'] = pd.to_numeric(df_filter['total'], errors='coerce').fillna(0)
 
 if df_filter.empty:
-    st.warning("❗️Tidak ada data ditemukan dengan filter yang dipilih.")
+    st.warning("❗ Tidak ada data ditemukan dengan filter yang dipilih.")
     st.stop()
 
 # === KPI ===
@@ -116,45 +116,29 @@ produk_terlaris = (
 )
 
 st.title("📊 Dashboard Penjualan")
+st.caption(f"📁 Sumber Data: {data_source}")
 col1, col2, col3 = st.columns(3)
 col1.metric("💰 Total Penjualan", f"Rp {total_penjualan:,.0f}")
 col2.metric("🧾 Jumlah Transaksi", total_transaksi)
 col3.metric("🔥 Produk Terlaris", produk_terlaris)
 
-st.markdown("---")
-
 # === SISA STOK ===
 st.subheader("📦 Informasi Sisa Stok per Produk")
-
-# Pastikan kolom ada
-required_cols = ['produk', 'qty', 'stok_awal']
-if not all(col in df.columns for col in required_cols):
-    st.error("❌ Data tidak memiliki kolom yang diperlukan: 'produk', 'qty', 'stok_awal'")
-    st.stop()
-
-# Hitung terjual & stok awal
-terjual = df.groupby('produk')['qty'].sum(min_count=1)  # gunakan min_count agar NaN tetap NaN
+terjual = df.groupby('produk')['qty'].sum()
 stok_awal = df.groupby('produk')['stok_awal'].first()
-
-# Hitung sisa stok (bisa negatif jika stok awal tidak cukup)
 sisa_stok = stok_awal - terjual
-
-# Gabungkan ke DataFrame
 stok_df = pd.DataFrame({
     'Stok Awal': stok_awal,
     'Terjual': terjual,
     'Sisa Stok': sisa_stok
-}).fillna(0).astype(int)  # isi NaN dengan 0 dan konversi ke int
+}).fillna(0).astype(int)
 
-# Tampilkan
-st.dataframe(stok_df, use_container_width=True)
+st.dataframe(stok_df)
 
-# Opsional: Tampilkan produk dengan stok menipis
-stok_menipis = stok_df[stok_df['Sisa Stok'] <= 5]
-if not stok_menipis.empty:
-    st.warning("⚠️ Produk berikut memiliki stok tersisa ≤ 5 unit:")
-    st.dataframe(stok_menipis)
-
+stok_habis = stok_df[stok_df['Sisa Stok'] <= 5]
+if not stok_habis.empty:
+    st.warning("⚠️ Ada produk dengan stok menipis (≤ 5 unit)")
+    st.dataframe(stok_habis)
 
 # === GRAFIK ===
 penjualan_bulanan = df_filter.groupby('bulan')['total'].sum().reset_index()
@@ -170,28 +154,21 @@ fig3 = px.bar(wilayah_chart, x='wilayah', y='total', title='🌍 Penjualan per W
 st.plotly_chart(fig3, use_container_width=True)
 
 # === TOP 10 PRODUK ===
-df_filter['total'] = pd.to_numeric(df_filter['total'], errors='coerce')
-df_filter = df_filter.dropna(subset=['total'])
-
-if df_filter.empty:
-    st.warning("Tidak ada data untuk ditampilkan di grafik produk terlaris.")
-else:
-    top_produk = (
-        df_filter.groupby('produk')['total'].sum()
-        .sort_values(ascending=False)
-        .head(10)
-        .reset_index()
-    )
-    fig4 = px.bar(top_produk, x='produk', y='total', title='🏆 Top 10 Produk Terlaris')
-
-    fig4.update_traces(texttemplate='%{y:,}', textposition='outside')
-    fig4.update_layout(
-        yaxis_tickformat=',',
-        yaxis_title='Total Penjualan (Rp)',
-        xaxis_title='Produk',
-        title_x=0.5
-    )
-    st.plotly_chart(fig4, use_container_width=True)
+top_produk = (
+    df_filter.groupby('produk')['total'].sum()
+    .sort_values(ascending=False)
+    .head(10)
+    .reset_index()
+)
+fig4 = px.bar(top_produk, x='produk', y='total', title='🏆 Top 10 Produk Terlaris')
+fig4.update_traces(texttemplate='%{y:,}', textposition='outside')
+fig4.update_layout(
+    yaxis_tickformat=',',
+    yaxis_title='Total Penjualan (Rp)',
+    xaxis_title='Produk',
+    title_x=0.5
+)
+st.plotly_chart(fig4, use_container_width=True)
 
 # === DOWNLOAD EXCEL ===
 st.subheader("⬇️ Download Data")
@@ -212,9 +189,6 @@ def df_to_pdf(df_in):
     return tmp.name
 
 if st.button("Export ke PDF"):
-    pdf_file = df_to_pdf(df)
+    pdf_file = df_to_pdf(df_filter)
     with open(pdf_file, "rb") as f:
         st.download_button("Download PDF", data=f, file_name="laporan_penjualan.pdf", mime="application/pdf")
-
-fanta = df[df['produk'].str.contains("Fanta Stroberi 500ml", case=False)]
-st.write("🔍 Debug Fanta Stroberi 500ml:", fanta)
