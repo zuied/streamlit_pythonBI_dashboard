@@ -31,7 +31,7 @@ df = pd.read_csv(io.BytesIO(csv_content)) if csv_content else pd.DataFrame()
 # Tombol manual refresh
 if st.button("🔄 Refresh Data dari GitHub"):
     st.cache_data.clear()
-    st.experimental_rerun()
+    st.rerun()
 
 # --- VALIDASI KOLON ---
 if 'tanggal' not in df.columns:
