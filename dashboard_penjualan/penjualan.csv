@@ -1,6 +1,6 @@
 tanggal,produk,kategori,qty,harga,jumlah,total,stok_awal,customer,wilayah
 1/1/2025,Fanta Stroberi 500ml,Minuman,60,6261,30000,30000,250,Budi,Jakarta
-1/2/2025,Nabati Cheese 1,Biskuit,46,6856,5000,5000,200,Ani,Bandung
+1/2/2025,Nabati Cheese 1,Biskuit,46,6856,5000,5000,300,Ani,Bandung
 1/3/2025,Bakso Instan,Makanan,67,5152,345184,345184,200,Rudi,Surabaya
 1/4/2025,Kue Pia Cap Mangkok 1,Makanan,51,9803,499953,499953,200,Abar,Bandung
 1/5/2025,Roma Malkist,Biskuit,50,9186,459300,459300,200,Hadi Cua,Jakarta
