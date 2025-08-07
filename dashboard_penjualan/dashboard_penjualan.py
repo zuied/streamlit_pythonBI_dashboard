@@ -33,6 +33,10 @@ def fetch_github_csv():
 # Fetch dan load CSV
 fetched_csv = fetch_github_csv()
 df = pd.read_csv(fetched_csv) if fetched_csv else pd.DataFrame()
+if 'tanggal' not in df.columns:
+    st.error("❌ File CSV dari GitHub tidak memiliki kolom 'tanggal'. Periksa struktur file.")
+    st.stop()
+
 
 # --- DATA CLEANING ---
 df['tanggal'] = pd.to_datetime(df['tanggal'], errors='coerce')
