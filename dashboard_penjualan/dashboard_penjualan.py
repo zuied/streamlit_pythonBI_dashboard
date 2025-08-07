@@ -29,7 +29,26 @@ if uploaded_file is not None:
 # === PILIH FILE DATA ===
 st.sidebar.markdown("### 📂 Pilih Versi Data")
 file_list = sorted(os.listdir(VERSI_FOLDER), reverse=True)
-selected_file = st.sidebar.selectbox("Pilih file:", ["penjualan.csv"] + file_list)
+
+# Cek apakah file 'penjualan.csv' tersedia di direktori utama
+default_file = "penjualan.csv" if os.path.exists("penjualan.csv") else None
+
+file_options = file_list
+if default_file:
+    file_options = [default_file] + file_list
+
+if file_options:
+    selected_file = st.sidebar.selectbox("Pilih file:", file_options)
+else:
+    st.error("❌ Belum ada file data yang tersedia.")
+    st.stop()
+
+# === LOAD DATA ===
+if selected_file == default_file:
+    df = pd.read_csv(default_file)
+else:
+    df = pd.read_csv(os.path.join(VERSI_FOLDER, selected_file))
+
 
 # === LOAD DATA ===
 if selected_file == "penjualan.csv":
