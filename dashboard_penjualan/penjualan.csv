@@ -62,7 +62,7 @@ tanggal,produk,kategori,qty,harga,jumlah,total,stok_awal,customer,wilayah
 3/2/2025,Sprite Botol,Minuman,49,5726,280574,280574,200,Babe,Surabaya
 3/3/2025,Susu Bendera,Kopi dan Susu,86,6770,582220,582220,200,Hana,Jakarta
 3/4/2025,Susu Ultra Milk 2,Kopi dan Susu,78,8543,666354,666354,200,Mana,Bandung
-3/5/2025,Teh Pucuk Harum,Minuman,100,8846,804986,804986,300,Ani,Bandung
+3/5/2025,Teh Pucuk Harum,Minuman,100,8846,804986,804986,250,Ani,Bandung
 3/6/2025,Nugget So Nice 1,Makanan,29,7504,217616,217616,200,Fai,Surabaya
 3/7/2025,Coca-Cola Kaleng,Minuman,21,7941,166761,166761,200,Rudi,Jakarta
 3/8/2025,Good Time Coklat 4,Biskuit,10,6766,67660,67660,200,Abar,Bandung
@@ -90,7 +90,7 @@ tanggal,produk,kategori,qty,harga,jumlah,total,stok_awal,customer,wilayah
 3/30/2025,Ayam Kaleng 300 g,Makanan,51,7175,365925,365925,200,Hana,Bandung
 3/31/2025,Susu Indomilk Coklat,Kopi dan Susu,78,4697,366366,366366,200,Mana,Jakarta
 4/1/2025,Roti Tawar Sari Roti,Makanan,70,9336,653520,653520,200,Budi,Bandung
-4/2/2025,Teh Pucuk Harum,Minuman,41,9819,402579,402579,200,Ani,Surabaya
+4/2/2025,Teh Pucuk Harum,Minuman,65,9819,402579,402579,200,Ani,Surabaya
 4/3/2025,Jus Buavita Jeruk,Minuman,52,6224,323648,323648,200,Rudi,Bandung
 4/4/2025,Roma Malkist,Biskuit,77,8756,674212,674212,200,Abar,Surabaya
 4/5/2025,Mizone Lychee Lemon 4,Minuman,85,5524,469540,469540,200,Hadi Cua,Jakarta
